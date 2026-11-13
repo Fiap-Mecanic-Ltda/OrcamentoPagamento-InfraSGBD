@@ -1,0 +1,71 @@
+# Banco do microsserviço OrcamentoPagamento para desenvolvimento local.
+#
+# Antes vivia no docker-compose.yml do próprio serviço. Agora o serviço só sobe a API e
+# o LocalStack, e encontra o banco pela rede `orcamento-net`, criada aqui. Por isso este
+# compose sobe primeiro:
+#
+#   1. OrcamentoPagamento-InfraSGBD      docker compose up -d
+#   2. OrcamentoPagamento-service        docker compose up --build
+#
+# Em produção não existe container de banco: o RDS será provisionado por Terraform neste
+# repositório (pasta infra/, ainda não criada).
+name: orcamento-sgbd
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: orcamento-sqlserver
+    environment:
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD:?Defina SA_PASSWORD no .env (ver .env.example)}
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+    ports:
+      # 1434 no host para não brigar com o SQL Server do monólito (1433), que roda em
+      # paralelo durante o desenvolvimento.
+      - "${SQLSERVER_PORTA_HOST:-1434}:1433"
+    volumes:
+      - orcamento_sqlserver_data:/var/opt/mssql
+    networks:
+      - orcamento-net
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' -No -b"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      # A primeira subida cria tempdb/msdb do zero e pode demorar bem mais que o
+      # intervalo; sem start_period o Docker marcaria o serviço como unhealthy antes.
+      start_period: 60s
+
+  # Execução única: cria o banco da aplicação com as opções definidas aqui. As tabelas
+  # continuam sendo responsabilidade das migrations do EF Core no serviço, aplicadas
+  # na subida da API — este repositório cuida da instância e do banco, não do schema.
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: orcamento-sqlserver-init
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      MSSQL_SA_PASSWORD: ${SA_PASSWORD}
+      ORCAMENTO_DB_NOME: ${ORCAMENTO_DB_NOME:-MechanicOrcamentoDb}
+    volumes:
+      - ./scripts/init:/scripts:ro
+    networks:
+      - orcamento-net
+    entrypoint:
+      - /bin/bash
+      - -c
+      - >
+        for f in /scripts/*.sql; do
+          echo "Executando $$f";
+          /opt/mssql-tools18/bin/sqlcmd -S orcamento-sqlserver -U sa -P "$$MSSQL_SA_PASSWORD" -No -b -v DB_NOME="$$ORCAMENTO_DB_NOME" -i "$$f" || exit 1;
+        done
+    restart: "no"
+
+volumes:
+  orcamento_sqlserver_data:
+
+networks:
+  # Nome fixo (sem o prefixo do projeto) para o compose do serviço declarar como external.
+  orcamento-net:
+    name: orcamento-net
