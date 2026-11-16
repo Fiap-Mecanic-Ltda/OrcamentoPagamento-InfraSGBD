@@ -1,0 +1,5 @@
+# Copie para terraform.tfvars (ignorado pelo git: infra/*.tfvars). Nunca commite.
+
+# Cadastre a MESMA senha como secret SA_PASSWORD no GitHub deste repositorio.
+# Regras do SQL Server no RDS: 8-128 chars, sem / @ " e sem espaco.
+db_master_password = "COLOQUE_A_SENHA_AQUI"
