@@ -6,12 +6,12 @@ name: Terraform - Banco do Orcamento (RDS)
 # precisa estar aplicado antes deste.
 on:
   push:
-    branches: [main, homolog]
+    branches: [main, homologacao]
     paths:
       - "infra/**"
       - ".github/workflows/terraform.yml"
   pull_request:
-    branches: [main, homolog]
+    branches: [main, homologacao]
     paths:
       - "infra/**"
       - ".github/workflows/terraform.yml"
