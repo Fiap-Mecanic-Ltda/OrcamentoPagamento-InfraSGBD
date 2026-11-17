@@ -18,7 +18,7 @@ das migrations do EF Core no serviço, aplicadas quando a API sobe.
 ```
 .
 ├── .github/workflows/
-│   └── terraform.yml           # plan (homolog/PR) e apply manual (Environment production)
+│   └── terraform.yml           # plan (homologacao/PR) e apply manual (Environment production)
 ├── infra/                      # Terraform do RDS (state em s3://.../prod/orcamento/sgbd/terraform.tfstate)
 │   ├── data.tf                 # VPC, subnets de banco e SGs dos nós, do InfraKubernete do monólito
 │   ├── rds.tf                  # mechanicltda-prod-orcamento (sqlserver-ex), subnet group, SG
